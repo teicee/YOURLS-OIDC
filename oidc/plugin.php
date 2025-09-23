@@ -73,7 +73,7 @@ function oidc_logout() {
 	yourls_store_cookie( null );
 	oidc_cookie_logout();
 	global $oidc;
-	$oidc->signOut( null, YOURLS_SITE );
+	$oidc->signOut( "", YOURLS_SITE );
 }
 
 function oidc_cookie_logout(){
