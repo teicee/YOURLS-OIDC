@@ -21,6 +21,10 @@ $oidc = new Jumbojett\OpenIDConnectClient(
 		);
 
 if( defined( 'OIDC_REDIRECT_URL' ) ) $oidc->setRedirectUrl(OIDC_REDIRECT_URL);
+// Extra scopes: providers such as Microsoft Entra ID only include
+// preferred_username / email when these are requested (default: profile email).
+$oidc_scopes = defined( 'OIDC_SCOPES' ) ? OIDC_SCOPES : 'profile email';
+if ( $oidc_scopes ) $oidc->addScope( array_filter( explode( ' ', $oidc_scopes ) ) );
 
 yourls_add_filter( 'is_valid_user', 'oidc_auth' );
 function oidc_auth( $valid ) {
@@ -38,6 +42,12 @@ function oidc_auth( $valid ) {
 		$oidc->authenticate();
 		if ( OIDC_BYPASS_YOURLS_AUTH ) {
 			$user = $oidc->requestUserInfo('preferred_username');
+			// Fall back to the ID token claims, then email: some providers
+			// (e.g. Microsoft Entra ID) do not expose preferred_username
+			// at the UserInfo endpoint.
+			if ( !$user ) $user = $oidc->getVerifiedClaims('preferred_username');
+			if ( !$user ) $user = $oidc->requestUserInfo('email');
+			if ( !$user ) $user = $oidc->getVerifiedClaims('email');
 			if ( $user ) {
 				yourls_set_user($user);
 				oidc_cookie_login($user);
